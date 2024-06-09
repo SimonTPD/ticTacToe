@@ -164,7 +164,7 @@ function newPlayer(name, marker){
 const CIRCLE_MARKER_PATH = "./circle-svgrepo-com.svg";
 const CROSS_MARKER_PATH = "./cross-svgrepo-com.svg";
 
-const gameboardSquares = document.querySelectorAll("div.gameboard > div");
+const gameboardSquares = document.querySelectorAll("div.gameboard > div.gameboard-squares > div");
 const newGameButton = document.querySelector("div.game-inputs > button");
 const gameLog = document.querySelector("div.game-log");
 
