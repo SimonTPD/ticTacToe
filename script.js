@@ -8,26 +8,46 @@ const game = (function(){
         ["e", "e", "e"]];
     let currentPlayer = "cross";    
     let numMarkersPlaced = 0;
+    let gameEnabled = false;
     
+    const enableGame = function(){
+        gameEnabled = true;
+    }
+
+    const disableGame = function(){
+        gameEnabled = false;
+    }    
+
+    const isGameEnabled = function(){
+        return gameEnabled;
+    }
+
     const placeMarker = function(posX, posY){
+            if(!gameEnabled){
+                return "none";
+            }
             if (posX < 1 || posX > 3) {
                 console.log("Invalid X coordinate");
-                return;
+                return "none";
             }
             if (posY < 1 || posY > 3) {
                 console.log("Invalid Y coordinate");
-                return;
+                return "none";
             }
             if (board[posX - 1][posY - 1] != "e"){
                 console.log("Spot already taken");
-                return;
+                return "none";
             }
-            board[posX - 1][posY - 1] = currentPlayer;
+
+            const markerPlaced = currentPlayer;
+            board[posX - 1][posY - 1] = markerPlaced;
             currentPlayer = currentPlayer == "cross" ? "circle" : "cross";
             numMarkersPlaced++;
+
+            return markerPlaced;
         }
     
-    const getGameStatus = function(){
+    const getGameState = function(){
             if (numMarkersPlaced < 3) return "play";
             else{
                 const crossWin =
@@ -73,7 +93,7 @@ const game = (function(){
         }
         
     const getResult = function(player1, player2){
-            switch (getGameStatus()){
+            switch (getGameState()){
                 case "play":
                     return "Game is not over!"
                     break;
@@ -95,12 +115,25 @@ const game = (function(){
             }
         }
     
+    const newGame = function(){
+            board = [
+            ["e", "e", "e"], 
+            ["e", "e", "e"], 
+            ["e", "e", "e"]];
+            currentPlayer = "cross";    
+            numMarkersPlaced = 0;            
+        }
+    
     return {
+            enableGame,
+            disableGame,
+            isGameEnabled,
             placeMarker,
-            getGameStatus,
+            getGameState,
             displayBoard,
             getCurrentPlayer,
             getResult,
+            newGame,
         };
     
   })();
@@ -128,19 +161,107 @@ function newPlayer(name, marker){
 /********************************************/
 /*Main portion*/
 /********************************************/
-const nomis = newPlayer('Nomis', 'circle');
-const simon = newPlayer('Simon', 'cross');
+const CIRCLE_MARKER_PATH = "./circle-svgrepo-com.svg";
+const CROSS_MARKER_PATH = "./cross-svgrepo-com.svg";
 
+const gameboardSquares = document.querySelectorAll("div.gameboard > div");
+const newGameButton = document.querySelector("div.game-inputs > button");
+const gameLog = document.querySelector("div.game-log");
 
-console.log(simon.getPlayerInfo());
-console.log(nomis.getPlayerInfo());
+let player1;
+let player2;
+/********************************************/
+/*Event listeners*/
+/********************************************/
+gameboardSquares.forEach((el) =>{
+    el.addEventListener("click", (event) => {
+        if(!game.isGameEnabled()) return;
 
+        const [posX, posY] =
+            getGameboardSquarePosition(event.currentTarget);
+        
+        const placedMarker = game.placeMarker(posX, posY);
 
-while (game.getGameStatus() == "play"){
-    const input = prompt(`${game.getCurrentPlayer()} plays, enter position ("x,y")`);
-    const [posX, posY] = [+input.split(",")[0], +input.split(",")[1]]; 
-    game.placeMarker(posX, posY);
-    game.displayBoard();
+        placeMarkerInGameboardSquare(event.currentTarget, placedMarker);
+
+        checkGameStatus();
+    });
+});
+
+newGameButton.addEventListener("click", () => {
+    clearGameboardSquares(gameboardSquares);
+    const createPlayerSuccessful = createPlayers();
+    if(createPlayerSuccessful){
+        updateGameLog(`New match between ${player1.getName()} and ${player2.getName()}`);
+        game.enableGame();
+        game.newGame();
+    }
+});
+
+/********************************************/
+/*Functions*/
+/********************************************/
+function getGameboardSquarePosition(gameboardSquare){
+    const [posX, posY] = [
+        +gameboardSquare.dataset.row,
+        +gameboardSquare.dataset.column
+    ];
+
+    return [posX, posY];
 }
-console.log(game.getGameStatus());
-console.log(game.getResult(simon, nomis));
+
+function placeMarkerInGameboardSquare(gameboardSquare, placedMarker){
+    if(placedMarker !== "none"){
+        const gameboardSquareMarker = document.createElement("img");
+        if(placedMarker === "cross"){
+            gameboardSquareMarker.setAttribute("src", CROSS_MARKER_PATH);
+        }
+        else{
+            gameboardSquareMarker.setAttribute("src", CIRCLE_MARKER_PATH);
+        }
+        gameboardSquare.appendChild(gameboardSquareMarker);
+    }
+}
+
+function clearGameboardSquares(gameboardSquares){
+    gameboardSquares.forEach((el) => {
+        if(el.firstChild !== null) el.removeChild(el.firstChild);
+    });
+}
+
+function checkGameStatus(){
+    const gameStatus = game.getGameState();
+    if(gameStatus != "play"){
+        updateGameLog(game.getResult(player1, player2));
+        game.disableGame();
+    }
+}
+
+function updateGameLog(message){
+    const gameLogMessage = document.createElement("p");
+    const dateTime = new Date().toLocaleString();
+    gameLogMessage.textContent = `${dateTime}: ${message}`;
+    gameLog.appendChild(gameLogMessage);
+}
+
+function createPlayers(){
+    const player1FieldName = document.querySelector("div.game-inputs > div.player1 > input#player1");
+    const player2FieldName = document.querySelector("div.game-inputs > div.player2 > input#player2");
+    let successful;
+
+    if (player1FieldName.value === "" || player2FieldName.value === ""){
+        alert("Names can't be empty!");
+        successful = false;
+    }
+    else if(player1FieldName.value === player2FieldName.value){
+        alert("Names can't be identical!");
+        successful = false;
+    }
+    else{
+        player1 = newPlayer(player1FieldName.value, "cross");
+        player2 = newPlayer(player2FieldName.value, "circle");
+        successful = true;
+    }
+
+    return successful;
+}
